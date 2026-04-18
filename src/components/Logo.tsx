@@ -110,29 +110,6 @@ export default function Logo({ size = 64, animated = false }: LogoProps) {
         opacity="0.7"
       />
 
-      {/* ── BROKEN/CRACKED TOP PIECES ── */}
-      {/* Left fragment */}
-      <path
-        d="M44 10 L36 4 L28 14 L22 22 L34 18 Z"
-        fill="url(#metalBroken)"
-        stroke="#8FAAC0"
-        strokeWidth="0.4"
-      />
-      {/* Right fragment */}
-      <path
-        d="M76 10 L84 4 L92 14 L98 22 L86 18 Z"
-        fill="url(#metalBroken)"
-        stroke="#8FAAC0"
-        strokeWidth="0.4"
-      />
-      {/* Top center crack gap — just shadow */}
-      <path
-        d="M54 7 L60 4 L66 7"
-        fill="none"
-        stroke="#1A2030"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
 
       {/* ── CIRCUIT TRACES (radiating from center chip) ── */}
       {/* All traces are cyan with glow */}
