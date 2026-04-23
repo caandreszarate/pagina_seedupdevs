@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LayoutDashboard } from 'lucide-react';
+import Link from 'next/link';
 import Logo from './Logo';
 
 const navLinks = [
@@ -15,11 +16,16 @@ const navLinks = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [hasEmail, setHasEmail] = useState(false);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handler);
     return () => window.removeEventListener('scroll', handler);
+  }, []);
+
+  useEffect(() => {
+    setHasEmail(!!sessionStorage.getItem('seedup_registro_email'));
   }, []);
 
   return (
@@ -61,6 +67,15 @@ export default function Navbar() {
 
         {/* Right actions */}
         <div className="hidden md:flex items-center gap-3">
+          {hasEmail && (
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-slate-300 hover:text-[#00E0FF] border border-white/10 hover:border-[#00E0FF]/30 transition-all"
+            >
+              <LayoutDashboard size={14} />
+              Mi progreso
+            </Link>
+          )}
           <a
             href="https://discord.gg/seedupdevs"
             target="_blank"
@@ -100,6 +115,16 @@ export default function Navbar() {
                 {link.label}
               </a>
             ))}
+            {hasEmail && (
+              <Link
+                href="/dashboard"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-1.5 text-slate-300 hover:text-[#00E0FF] transition-colors text-sm"
+              >
+                <LayoutDashboard size={14} />
+                Mi progreso
+              </Link>
+            )}
             <a
               href="https://discord.gg/seedupdevs"
               target="_blank"

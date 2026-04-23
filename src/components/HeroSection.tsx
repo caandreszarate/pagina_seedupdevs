@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, ArrowRight } from 'lucide-react';
+import { MessageSquare, ArrowRight, Zap } from 'lucide-react';
 import Logo from './Logo';
 
 export default function HeroSection() {
@@ -197,11 +197,12 @@ export default function HeroSection() {
           </a>
 
           <a
-            href="#comunidad"
+            href="/evaluacion"
             className="group flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-semibold text-[#00E0FF] border border-[#00E0FF44] hover:border-[#00E0FF] hover:bg-[#00E0FF0A] transition-all text-sm uppercase tracking-wider"
             style={{ cursor: 'none' }}
           >
-            Explorar comunidad
+            <Zap size={16} />
+            Evaluar mi nivel
             <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
           </a>
         </motion.div>
