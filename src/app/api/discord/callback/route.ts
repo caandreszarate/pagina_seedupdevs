@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { removeVisitorRole } from '@/lib/discord';
 import type { Nivel } from '@/types/evaluacion';
 
 const ROLE_MAP: Record<Nivel, string> = {
@@ -155,6 +156,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(
       `${resultadoUrl}?discord=error&msg=${encodeURIComponent('Error al asignar rol en Discord')}`,
     );
+  }
+
+  // ── Visitor cleanup (best-effort — never fails OAuth) ──────────────────
+  const visitorRemoved = await removeVisitorRole(discordId);
+  if (!visitorRemoved && process.env.DISCORD_ROLE_VISITOR) {
+    console.error(`[discord/callback] Failed to remove Visitor role for discord_id: ${discordId}`);
+  }
+
+  const { error: visitorUpdateError } = await supabaseAdmin
+    .from('discord_visitors')
+    .update({
+      status: 'verified',
+      verified_user_id: usuario.id,
+      verified_at: new Date().toISOString(),
+    })
+    .eq('discord_id', discordId);
+
+  if (visitorUpdateError) {
+    console.error(`[discord/callback] Failed to update discord_visitors for discord_id: ${discordId}`, visitorUpdateError);
   }
 
   return NextResponse.redirect(

@@ -9,6 +9,7 @@ import type { Nivel } from '@/types/evaluacion';
 import FeedbackForm from '@/components/feedback/FeedbackForm';
 import RecommendationCard from '@/components/learning/RecommendationCard';
 import ProgressBar from '@/components/learning/ProgressBar';
+import TeamApplicationSection from '@/components/teams/TeamApplicationSection';
 import type { Recommendation } from '@/app/api/recommendations/route';
 
 const NIVEL_CONFIG: Record<Nivel, { label: string; color: string; badge: string }> = {
@@ -302,6 +303,15 @@ function DashboardContent() {
             Gestionar →
           </Link>
         )}
+      </motion.div>
+
+      {/* ── Equipo ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.12 }}
+      >
+        <TeamApplicationSection email={email} />
       </motion.div>
 
       {/* ── Recomendaciones ── */}

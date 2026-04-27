@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Send } from 'lucide-react';
@@ -8,7 +8,26 @@ import { preguntas } from '@/data/preguntas';
 import { useEvaluacion } from '@/hooks/useEvaluacion';
 import ProgressBar from '@/components/evaluacion/ProgressBar';
 import QuestionCard from '@/components/evaluacion/QuestionCard';
+import EvaluationDisclaimerModal from '@/components/evaluacion/EvaluationDisclaimerModal';
 import type { Nivel, Pregunta } from '@/types/evaluacion';
+
+const DISCLAIMER_GLOBAL_KEY = 'seedup_eval_disclaimer_seen';
+function getDisclaimerEmailKey(email: string) {
+  return `seedup_eval_disclaimer_seen_${email}`;
+}
+
+function shouldShowDisclaimer(): boolean {
+  if (sessionStorage.getItem(DISCLAIMER_GLOBAL_KEY)) return false;
+  const email = sessionStorage.getItem('seedup_registro_email');
+  if (email && sessionStorage.getItem(getDisclaimerEmailKey(email))) return false;
+  return true;
+}
+
+function saveDisclaimerSeen() {
+  sessionStorage.setItem(DISCLAIMER_GLOBAL_KEY, 'true');
+  const email = sessionStorage.getItem('seedup_registro_email');
+  if (email) sessionStorage.setItem(getDisclaimerEmailKey(email), 'true');
+}
 
 const NIVELES: Nivel[] = ['dev-zero', 'dev-bronce', 'dev-silver', 'dev-gold', 'dev-platinum'];
 const POR_NIVEL = 3;
@@ -26,6 +45,16 @@ function seleccionarPreguntas(banco: Pregunta[]): Pregunta[] {
 export default function EvaluacionPage() {
   const router = useRouter();
   const [preguntasSeleccionadas] = useState<Pregunta[]>(() => seleccionarPreguntas(preguntas));
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+
+  useEffect(() => {
+    setShowDisclaimer(shouldShowDisclaimer());
+  }, []);
+
+  function handleDisclaimerAccept() {
+    saveDisclaimerSeen();
+    setShowDisclaimer(false);
+  }
   const {
     indiceActual,
     respuestas,
@@ -51,14 +80,23 @@ export default function EvaluacionPage() {
     sessionStorage.removeItem('seedup_eval_saved');
 
     try {
+      const emailGuardado = sessionStorage.getItem('seedup_registro_email') ?? undefined;
+
       const res = await fetch('/api/evaluar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           respuestas,
           preguntaIds: preguntasSeleccionadas.map(p => p.id),
+          email: emailGuardado,
         }),
       });
+
+      if (res.status === 429) {
+        const data = await res.json();
+        dispatch({ type: 'SET_ERROR', message: data.message ?? 'Debes esperar antes de volver a evaluar' });
+        return;
+      }
 
       if (!res.ok) throw new Error('Error al evaluar');
 
@@ -75,6 +113,10 @@ export default function EvaluacionPage() {
       className="min-h-screen flex flex-col"
       style={{ background: '#05070D' }}
     >
+      <EvaluationDisclaimerModal
+        visible={showDisclaimer}
+        onAccept={handleDisclaimerAccept}
+      />
       {/* ── Header ── */}
       <header className="sticky top-0 z-20 border-b border-white/5 px-4 py-4"
         style={{ background: 'rgba(5,7,13,0.9)', backdropFilter: 'blur(12px)' }}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { applyLevelUpdate } from '@/app/api/update-level/route';
 import { sendWelcomeEmail } from '@/lib/email';
+import { sendDiscordMessage } from '@/lib/discord';
 import type { ResultadoEvaluacion, Nivel } from '@/types/evaluacion';
 
 interface SaveUserBody {
@@ -49,15 +50,34 @@ export async function POST(req: NextRequest) {
   // ── Buscar usuario existente ────────────────────────────────────────────
   const { data: usuarioExistente } = await supabaseAdmin
     .from('users')
-    .select('id')
+    .select('id, nombres, last_evaluation_at')
     .eq('email', emailNorm)
     .maybeSingle();
 
   let userId: string;
+  let nombreEnDB: string | null = null;
 
   if (usuarioExistente) {
     // Usuario ya registrado — solo necesitamos el email
     userId = usuarioExistente.id;
+    nombreEnDB = usuarioExistente.nombres ?? null;
+
+    // Cooldown: re-verificar antes de persistir (evita bypass directo a este endpoint)
+    if (usuarioExistente.last_evaluation_at) {
+      const msSince = Date.now() - new Date(usuarioExistente.last_evaluation_at).getTime();
+      const daysSince = msSince / (1000 * 60 * 60 * 24);
+      if (daysSince < 7) {
+        const daysLeft = Math.ceil(7 - daysSince);
+        return NextResponse.json(
+          {
+            error: 'cooldown',
+            message: `Debes esperar ${daysLeft} día${daysLeft === 1 ? '' : 's'} antes de volver a evaluar`,
+            daysLeft,
+          },
+          { status: 429 },
+        );
+      }
+    }
   } else {
     // Usuario nuevo — requiere todos los campos
     if (!nombres?.trim() || !apellidos?.trim() || !telefono?.trim()) {
@@ -122,8 +142,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Error al guardar evaluación' }, { status: 500 });
   }
 
+  // ── Registrar fecha de evaluación (para cooldown) ───────────────────────
+  await supabaseAdmin
+    .from('users')
+    .update({ last_evaluation_at: new Date().toISOString() })
+    .eq('id', userId);
+
   // ── Aplicar lógica de progresión de nivel ───────────────────────────────
   const levelResult = await applyLevelUpdate(userId, resultado.nivel as Nivel);
+
+  // ── Notificaciones a Discord (#logros) ──────────────────────────────────
+  const displayName = nombres?.trim() || nombreEnDB || emailNorm;
+  if (levelResult.upgraded) {
+    void sendDiscordMessage(`🔥 ${displayName} subió a ${levelResult.new_level} 🚀`);
+  } else {
+    void sendDiscordMessage(`🧠 ${displayName} completó la evaluación`);
+  }
 
   // ── Contar evaluaciones del usuario ────────────────────────────────────
   const { count } = await supabaseAdmin

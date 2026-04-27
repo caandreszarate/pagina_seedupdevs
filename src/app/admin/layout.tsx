@@ -6,6 +6,8 @@ const NAV = [
   { href: '/admin/users', label: 'Usuarios' },
   { href: '/admin/feedback', label: 'Feedback' },
   { href: '/admin/learning-paths', label: 'Contenido' },
+  { href: '/admin/teams', label: 'Equipos' },
+  { href: '/admin/community', label: 'Comunidad' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { preguntas } from '@/data/preguntas';
+import { supabaseAdmin } from '@/lib/supabase';
 import type { Nivel, RespuestaUsuario, ResultadoEvaluacion } from '@/types/evaluacion';
+
+const COOLDOWN_DAYS = 7;
 
 const UMBRAL_NIVEL = 2;
 
@@ -70,14 +73,42 @@ const ETIQUETAS_HABILIDAD: Record<string, string> = {
 export async function POST(req: NextRequest) {
   let respuestas: RespuestaUsuario[];
   let preguntaIds: string[];
+  let email: string | undefined;
 
   try {
     const body = await req.json();
     respuestas = body.respuestas;
     preguntaIds = body.preguntaIds;
+    email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : undefined;
     if (!Array.isArray(respuestas) || !Array.isArray(preguntaIds)) throw new Error();
   } catch {
     return NextResponse.json({ error: 'Cuerpo inválido' }, { status: 400 });
+  }
+
+  // ── Cooldown check (solo usuarios registrados) ──────────────────────────
+  if (email) {
+    const { data: user } = await supabaseAdmin
+      .from('users')
+      .select('last_evaluation_at')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (user?.last_evaluation_at) {
+      const daysSince =
+        (Date.now() - new Date(user.last_evaluation_at).getTime()) / (1000 * 60 * 60 * 24);
+
+      if (daysSince < COOLDOWN_DAYS) {
+        const daysLeft = Math.ceil(COOLDOWN_DAYS - daysSince);
+        return NextResponse.json(
+          {
+            error: 'cooldown',
+            message: `Debes esperar ${daysLeft} día${daysLeft === 1 ? '' : 's'} antes de volver a evaluar`,
+            daysLeft,
+          },
+          { status: 429 },
+        );
+      }
+    }
   }
 
   const preguntasActivas = preguntas.filter(p => preguntaIds.includes(p.id));
